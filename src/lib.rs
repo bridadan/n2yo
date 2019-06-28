@@ -29,7 +29,7 @@ mod tests {
         const KEY : &str = "dummy_key";
         let client : N2yo = N2yo::new(KEY);
         assert_eq!(client.api_key, KEY);
-        assert_eq!(client.api_key, DEFAULT_BASE_URL);
+        assert_eq!(client.base_url, DEFAULT_BASE_URL);
     }
     
     #[test]
@@ -38,6 +38,6 @@ mod tests {
         const URL : &str = "dummy_url";
         let client : N2yo = N2yo::new_with_base_url(KEY, URL);
         assert_eq!(client.api_key, KEY);
-        assert_eq!(client.api_key, URL);
+        assert_eq!(client.base_url, URL);
     }
 }
