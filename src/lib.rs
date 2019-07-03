@@ -65,7 +65,7 @@ pub struct PositionsResponse {
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SatellitePass {
+pub struct SatelliteVisualPass {
 	pub start_az: f64,
     pub start_az_compass: String,
     pub start_el: f64,
@@ -86,9 +86,33 @@ pub struct SatellitePass {
 }
 
 #[derive(serde::Deserialize, Debug)]
-pub struct PassesResponse {
+pub struct VisualPassesResponse {
 	pub info: Info,
-    pub passes: Vec<SatellitePass>,
+    pub passes: Vec<SatelliteVisualPass>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SatelliteRadioPass {
+	pub start_az: f64,
+    pub start_az_compass: String,
+    #[serde(rename = "startUTC")]
+    pub start_utc: u32,
+    pub max_az: f64,
+    pub max_az_compass: String,
+    pub max_el: f64,
+    #[serde(rename = "maxUTC")]
+    pub max_utc: u32,
+    pub end_az: f64,
+    pub end_az_compass: String,
+    #[serde(rename = "endUTC")]
+    pub end_utc: u32,
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct RadioPassesResponse {
+	pub info: Info,
+    pub passes: Vec<SatelliteRadioPass>,
 }
 
 const DEFAULT_BASE_URL : &str = "https://www.n2yo.com/rest/v1";
@@ -155,7 +179,7 @@ impl Client {
 		observer_alt: f64,
 		days: u32,
         min_visibility: u32
-	) -> Result<PassesResponse, Error> {
+	) -> Result<VisualPassesResponse, Error> {
         let url_part = format!(
 			"/satellite/visualpasses/{}/{}/{}/{}/{}/{}",
 			id,
@@ -164,6 +188,32 @@ impl Client {
 			observer_alt,
 			days,
             min_visibility
+		);
+        let url = self.form_request_url(url_part.as_str());
+		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
+        if response.status() != reqwest::StatusCode::OK {
+			return Err(Error::Response(response));
+		}
+		Ok(response.json().map_err(Error::Parse)?)
+    }
+
+	pub fn radio_passes(
+		&self,
+		id: u32,
+		observer_lat: f64,
+		observer_lng: f64,
+		observer_alt: f64,
+		days: u32,
+        min_elevation: u32
+	) -> Result<RadioPassesResponse, Error> {
+        let url_part = format!(
+			"/satellite/radiopasses/{}/{}/{}/{}/{}/{}",
+			id,
+			observer_lat,
+			observer_lng,
+			observer_alt,
+			days,
+            min_elevation
 		);
         let url = self.form_request_url(url_part.as_str());
 		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
@@ -298,5 +348,42 @@ mod tests {
 		assert_eq!(response.info.satid, SATID);
 		assert_eq!(response.info.satname, "SPACE STATION");
         assert_eq!(response.passes.len(), 3);
+	}
+
+    #[test]
+	fn radio_passes() {
+        const KEY : &str = "dummy_key";
+		const SATID: u32 = 25544;
+		const OBSERVER_LAT: f64 = 41.702;
+		const OBSERVER_LNG: f64 = -76.014;
+		const OBSERVER_ALT: f64 = 0.0;
+		const DAYS: u32 = 2;
+        const MIN_ELEVATION: u32 = 40;
+		let path = format!(
+			"/satellite/radiopasses/{}/{}/{}/{}/{}/{}&apiKey={}",
+			SATID,
+			OBSERVER_LAT,
+			OBSERVER_LNG,
+			OBSERVER_ALT,
+			DAYS,
+            MIN_ELEVATION,
+			KEY
+		);
+        let _m = mock("GET", path.as_str())
+            .with_status(200)
+            .with_body_from_file(get_mock_result_path("radiopasses").as_str())
+			.create();
+        let client : Client = Client::new_with_base_url(KEY, &mockito::server_url());
+		let response = client.radio_passes(
+			SATID,
+			OBSERVER_LAT,
+			OBSERVER_LNG,
+			OBSERVER_ALT,
+			DAYS,
+            MIN_ELEVATION
+		).unwrap();
+		assert_eq!(response.info.satid, SATID);
+		assert_eq!(response.info.satname, "SPACE STATION");
+        assert_eq!(response.passes.len(), 2);
 	}
 }
