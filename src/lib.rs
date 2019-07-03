@@ -14,7 +14,6 @@ pub struct Client {
 pub enum Error {
 	Request(reqwest::Error),
 	Response(reqwest::Response),
-	Parse(reqwest::Error),
 }
 
 // Implement std::fmt::Display for Error
@@ -29,6 +28,18 @@ impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
         None
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(error: reqwest::Error) -> Self {
+        Error::Request(error)
+    }
+}
+
+impl From<reqwest::Response> for Error {
+    fn from(error: reqwest::Response) -> Self {
+        Error::Response(error)
     }
 }
 
@@ -140,11 +151,11 @@ impl Client {
     pub fn tle(&self, id: u32) -> Result<TleResponse, Error> {
         let url_part = format!("/satellite/tle/{}", id);
         let url = self.form_request_url(url_part.as_str());
-		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
+		let mut response = reqwest::get(url.as_str())?;
         if response.status() != reqwest::StatusCode::OK {
 			return Err(Error::Response(response));
 		}
-		Ok(response.json().map_err(Error::Parse)?)
+		Ok(response.json()?)
     }
 
 	pub fn positions(
@@ -164,11 +175,11 @@ impl Client {
 			seconds
 		);
         let url = self.form_request_url(url_part.as_str());
-		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
+		let mut response = reqwest::get(url.as_str())?;
         if response.status() != reqwest::StatusCode::OK {
 			return Err(Error::Response(response));
 		}
-		Ok(response.json().map_err(Error::Parse)?)
+		Ok(response.json()?)
     }
 
 	pub fn visual_passes(
@@ -190,11 +201,11 @@ impl Client {
             min_visibility
 		);
         let url = self.form_request_url(url_part.as_str());
-		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
+		let mut response = reqwest::get(url.as_str())?;
         if response.status() != reqwest::StatusCode::OK {
 			return Err(Error::Response(response));
 		}
-		Ok(response.json().map_err(Error::Parse)?)
+		Ok(response.json()?)
     }
 
 	pub fn radio_passes(
@@ -216,11 +227,11 @@ impl Client {
             min_elevation
 		);
         let url = self.form_request_url(url_part.as_str());
-		let mut response = reqwest::get(url.as_str()).map_err(Error::Request)?;
+		let mut response = reqwest::get(url.as_str())?;
         if response.status() != reqwest::StatusCode::OK {
 			return Err(Error::Response(response));
 		}
-		Ok(response.json().map_err(Error::Parse)?)
+		Ok(response.json()?)
     }
 }
 
